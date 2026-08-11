@@ -54,6 +54,8 @@
     h1 { font-size: clamp(1.25rem, 3vw, 2rem); line-height: 1.05; margin: 0; }
     .subtitle { color: var(--muted); margin: .2rem 0 0; font-size: .93rem; }
     .progress-box { min-width: min(250px, 38vw); }
+    .game-status { display: flex; align-items: center; justify-content: flex-end; gap: .45rem; margin-bottom: .35rem; font-size: .85rem; font-weight: 800; }
+    .score-chip { background: #fff8d9; border: 1px solid #dfc36b; border-radius: 999px; padding: .25rem .6rem; }
     .progress-label { display: flex; justify-content: space-between; gap: .5rem; font-size: .85rem; margin-bottom: .35rem; }
     .progress-track { height: .75rem; overflow: hidden; border-radius: 999px; background: rgba(255,255,255,.72); border: 1px solid var(--line); }
     .progress-fill { height: 100%; width: 0; background: linear-gradient(90deg, var(--green), var(--gold)); transition: width .4s ease; }
@@ -93,6 +95,27 @@
     .molecule { position: absolute; width: 13px; height: 13px; border-radius: 50%; z-index: 3; pointer-events: none; opacity: 0; }
     .molecule.water { background: var(--blue); box-shadow: 0 0 0 4px rgba(39,134,184,.15); }
     .molecule.sugar { background: var(--orange); border-radius: 3px; transform: rotate(45deg); }
+    .explorer {
+      position: absolute;
+      z-index: 9;
+      left: 43%;
+      top: 83%;
+      width: 58px;
+      height: 70px;
+      transform: translate(-50%, -50%);
+      transition: left .9s cubic-bezier(.34,1.45,.64,1), top .9s cubic-bezier(.34,1.45,.64,1);
+      filter: drop-shadow(0 6px 5px rgba(25,55,35,.22));
+      pointer-events: none;
+    }
+    .explorer-body { position: absolute; left: 11px; bottom: 0; width: 36px; height: 45px; background: #f0a646; border: 3px solid var(--ink); border-radius: 48% 48% 38% 38%; }
+    .explorer-face { position: absolute; left: 6px; top: -19px; width: 43px; height: 38px; background: #ffd49b; border: 3px solid var(--ink); border-radius: 50%; }
+    .explorer-face::before { content: "•  •"; position: absolute; left: 9px; top: 7px; font-size: 14px; letter-spacing: 5px; }
+    .explorer-face::after { content: "⌣"; position: absolute; left: 14px; top: 12px; font-size: 18px; }
+    .explorer-leaf { position: absolute; left: 22px; top: -31px; width: 24px; height: 15px; background: var(--green); border: 2px solid var(--ink); border-radius: 100% 10% 100% 10%; transform: rotate(-20deg); }
+    .explorer.moving { animation: bounce .28s ease-in-out 3 alternate; }
+    @keyframes bounce { to { margin-top: -10px; } }
+    .speech { position: absolute; z-index: 8; left: 53%; top: 75%; max-width: 160px; padding: .55rem .7rem; background: white; border: 2px solid var(--ink); border-radius: .8rem; font-size: .78rem; font-weight: 800; box-shadow: 0 5px 12px rgba(0,0,0,.12); transition: opacity .25s; }
+    .speech::before { content: ""; position: absolute; left: -9px; bottom: 12px; width: 14px; height: 14px; background: white; border-left: 2px solid var(--ink); border-bottom: 2px solid var(--ink); transform: rotate(45deg); }
     .plant-map.animate-water .water { opacity: 1; animation: rise 2.4s ease-in-out infinite; }
     .plant-map.animate-sugar .sugar { opacity: 1; animation: flowDown 2.8s ease-in-out infinite; }
     @keyframes rise { 0% { left: 47%; top: 78%; } 75% { left: 47%; top: 32%; } 100% { left: 61%; top: 29%; opacity: 0; } }
@@ -171,6 +194,13 @@
     .quiz-option.correct { background: var(--green-light); border-color: var(--green); }
     .quiz-option.incorrect { background: #fde4dc; border-color: var(--orange); }
     .quiz-result { min-height: 1.6rem; margin: .6rem 0 0; font-weight: 800; }
+    .mission-bar { display: grid; grid-template-columns: repeat(6, 1fr); gap: .35rem; margin: 0 0 1rem; }
+    .mission-badge { min-width: 0; text-align: center; padding: .45rem .15rem; border: 1px solid var(--line); border-radius: .7rem; background: #ecefe9; color: var(--muted); font-size: .72rem; font-weight: 800; }
+    .mission-badge.won { background: #fff3b8; border-color: var(--gold); color: var(--ink); transform: translateY(-2px); }
+    .mission-badge span { display: block; font-size: 1.2rem; margin-bottom: .08rem; filter: grayscale(1); opacity: .45; }
+    .mission-badge.won span { filter: none; opacity: 1; }
+    .mission-toast { position: fixed; z-index: 30; left: 50%; top: 1rem; transform: translate(-50%, -130%); background: var(--green-dark); color: white; border-radius: 999px; padding: .75rem 1.1rem; font-weight: 800; box-shadow: var(--shadow); transition: transform .35s ease; }
+    .mission-toast.show { transform: translate(-50%, 0); }
     footer { text-align: center; padding: 1rem; color: var(--muted); font-size: .85rem; }
 
     @media (max-width: 820px) {
@@ -187,6 +217,7 @@
       .leaf { width: 105px; height: 62px; }
       .hotspot { font-size: .77rem; padding: .4rem .55rem; }
       .ingredient-row { grid-template-columns: 1fr; }
+      .mission-bar { grid-template-columns: repeat(3, 1fr); }
     }
   </style>
 </head>
@@ -201,6 +232,7 @@
       </div>
     </div>
     <div class="progress-box" aria-label="Exploration progress">
+      <div class="game-status"><span class="score-chip">⭐ <span id="scoreValue">0</span> points</span></div>
       <div class="progress-label"><span>Journey progress</span><strong id="progressText">0 of 6</strong></div>
       <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
     </div>
@@ -224,6 +256,8 @@
           <div class="roots-shape" aria-hidden="true"><i class="root"></i><i class="root"></i><i class="root"></i><i class="root"></i><i class="root"></i></div>
           <div class="molecule water" aria-hidden="true"></div>
           <div class="molecule sugar" aria-hidden="true"></div>
+          <div class="explorer" id="explorer" aria-hidden="true"><div class="explorer-leaf"></div><div class="explorer-face"></div><div class="explorer-body"></div></div>
+          <div class="speech" id="speech">Hi! I’m Sprout Scout. Choose where we go!</div>
           <button class="hotspot" data-stop="photosynthesis" type="button">☀ Photosynthesis</button>
           <button class="hotspot" data-stop="leaf" type="button">🍃 Leaf &amp; stomata</button>
           <button class="hotspot" data-stop="chloroplast" type="button">🔬 Chloroplast</button>
@@ -240,6 +274,14 @@
           <p id="stopIntro">Select a labeled part of the plant to discover how water, gases, light, and sugar move through a plant.</p>
         </div>
         <div class="content-body">
+          <div class="mission-bar" aria-label="Mission badges">
+            <div class="mission-badge" data-badge="roots"><span>💧</span>Root Ranger</div>
+            <div class="mission-badge" data-badge="stem"><span>↕️</span>Tube Traveler</div>
+            <div class="mission-badge" data-badge="leaf"><span>🍃</span>Stomata Scout</div>
+            <div class="mission-badge" data-badge="chloroplast"><span>🔬</span>Light Catcher</div>
+            <div class="mission-badge" data-badge="photosynthesis"><span>🍬</span>Food Maker</div>
+            <div class="mission-badge" data-badge="transpiration"><span>☁️</span>Water Wizard</div>
+          </div>
           <article class="activity active" data-activity="welcome">
             <h3>Your mission</h3>
             <p>Visit all six stops. Try each activity, ask questions, and discover how a plant makes food from light.</p>
@@ -338,6 +380,7 @@
       </section>
     </div>
   </main>
+  <div class="mission-toast" id="missionToast" role="status" aria-live="polite"></div>
   <footer>Plant Explorer · Learn by following matter and energy through a plant</footer>
 
   <script>
@@ -390,12 +433,22 @@
     ];
 
     const visited = new Set();
+    const stopPositions = {
+      roots: { left: '43%', top: '83%', speech: 'Root mission! Let’s collect water and minerals.' },
+      stem: { left: '48%', top: '57%', speech: 'Into the stem! Which transport tube should we ride?' },
+      leaf: { left: '66%', top: '27%', speech: 'We made it to a leaf. Look for tiny stomata!' },
+      chloroplast: { left: '65%', top: '42%', speech: 'Shrink down! We’re entering a chloroplast.' },
+      photosynthesis: { left: '33%', top: '25%', speech: 'Time to use light energy and make plant food!' },
+      transpiration: { left: '73%', top: '54%', speech: 'Follow the water vapor into the atmosphere!' }
+    };
+    let score = 0;
     let quizIndex = 0;
     const plantMap = document.getElementById('plantMap');
 
     function showStop(stop) {
       const info = stopInfo[stop];
       if (!info) return;
+      moveExplorer(stop);
       document.getElementById('stopNumber').textContent = info.number;
       document.getElementById('stopTitle').textContent = info.title;
       document.getElementById('stopIntro').textContent = info.intro;
@@ -403,9 +456,38 @@
       document.querySelectorAll('.hotspot').forEach(el => el.classList.toggle('active', el.dataset.stop === stop));
       plantMap.classList.toggle('animate-water', stop === 'roots' || stop === 'stem' || stop === 'transpiration');
       plantMap.classList.toggle('animate-sugar', stop === 'stem' || stop === 'photosynthesis');
+      const firstVisit = !visited.has(stop);
       visited.add(stop);
+      if (firstVisit) awardBadge(stop);
       updateProgress();
       if (window.innerWidth < 821) document.getElementById('learning-panel').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    function moveExplorer(stop) {
+      const explorer = document.getElementById('explorer');
+      const speech = document.getElementById('speech');
+      const destination = stopPositions[stop];
+      explorer.classList.add('moving');
+      explorer.style.left = destination.left;
+      explorer.style.top = destination.top;
+      speech.style.opacity = '0';
+      setTimeout(() => {
+        explorer.classList.remove('moving');
+        speech.style.left = `calc(${destination.left} + 35px)`;
+        speech.style.top = `calc(${destination.top} - 60px)`;
+        speech.textContent = destination.speech;
+        speech.style.opacity = '1';
+      }, 850);
+    }
+
+    function awardBadge(stop) {
+      score += 100;
+      document.getElementById('scoreValue').textContent = score;
+      document.querySelector(`[data-badge="${stop}"]`).classList.add('won');
+      const toast = document.getElementById('missionToast');
+      toast.textContent = `Badge earned! +100 points`;
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 1800);
     }
 
     function updateProgress() {
@@ -514,6 +596,9 @@
 
     document.getElementById('resetBtn').addEventListener('click', () => {
       visited.clear();
+      score = 0;
+      document.getElementById('scoreValue').textContent = '0';
+      document.querySelectorAll('.mission-badge').forEach(x => x.classList.remove('won'));
       updateProgress();
       plantMap.classList.remove('animate-water', 'animate-sugar');
       document.querySelectorAll('.hotspot').forEach(x => x.classList.remove('active'));
@@ -521,6 +606,13 @@
       document.getElementById('stopNumber').textContent = 'Welcome, explorer';
       document.getElementById('stopTitle').textContent = 'Follow a drop of water';
       document.getElementById('stopIntro').textContent = 'Select a labeled part of the plant to discover how water, gases, light, and sugar move through a plant.';
+      const explorer = document.getElementById('explorer');
+      explorer.style.left = '43%';
+      explorer.style.top = '83%';
+      const speech = document.getElementById('speech');
+      speech.style.left = '53%';
+      speech.style.top = '75%';
+      speech.textContent = 'Hi! I’m Sprout Scout. Choose where we go!';
     });
   </script>
 </body>
