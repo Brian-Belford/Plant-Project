@@ -1,0 +1,527 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="An interactive journey through a plant to learn photosynthesis.">
+  <title>Plant Explorer: The Photosynthesis Journey</title>
+  <style>
+    :root {
+      --ink: #173528;
+      --muted: #52685d;
+      --paper: #fffdf3;
+      --cream: #f6f0d8;
+      --green: #257a4a;
+      --green-dark: #155b36;
+      --green-light: #dff2d9;
+      --blue: #2786b8;
+      --blue-light: #dff3fb;
+      --gold: #edb62f;
+      --orange: #db7438;
+      --purple: #7653a6;
+      --line: #c8d6ca;
+      --shadow: 0 12px 34px rgba(27, 67, 45, .13);
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 10% 0%, rgba(239, 193, 59, .18), transparent 25rem),
+        linear-gradient(#eaf7fb 0 38%, #f8f3df 38% 100%);
+      font-family: "Trebuchet MS", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      min-height: 100vh;
+    }
+    button, input { font: inherit; }
+    button { cursor: pointer; }
+    button:focus-visible, input:focus-visible { outline: 4px solid rgba(237, 182, 47, .65); outline-offset: 3px; }
+    .skip-link { position: absolute; left: -9999px; top: 0; }
+    .skip-link:focus { left: 1rem; top: 1rem; z-index: 20; background: white; padding: .7rem 1rem; border-radius: .5rem; }
+
+    header {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 1.2rem clamp(1rem, 4vw, 3rem) .8rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+    }
+    .brand { display: flex; align-items: center; gap: .8rem; }
+    .brand-mark { font-size: 2rem; filter: drop-shadow(0 4px 5px rgba(0,0,0,.1)); }
+    h1 { font-size: clamp(1.25rem, 3vw, 2rem); line-height: 1.05; margin: 0; }
+    .subtitle { color: var(--muted); margin: .2rem 0 0; font-size: .93rem; }
+    .progress-box { min-width: min(250px, 38vw); }
+    .progress-label { display: flex; justify-content: space-between; gap: .5rem; font-size: .85rem; margin-bottom: .35rem; }
+    .progress-track { height: .75rem; overflow: hidden; border-radius: 999px; background: rgba(255,255,255,.72); border: 1px solid var(--line); }
+    .progress-fill { height: 100%; width: 0; background: linear-gradient(90deg, var(--green), var(--gold)); transition: width .4s ease; }
+
+    main { max-width: 1180px; margin: 0 auto; padding: 0 clamp(1rem, 4vw, 3rem) 3rem; }
+    .app-shell { display: grid; grid-template-columns: minmax(310px, .88fr) minmax(360px, 1.12fr); gap: 1.2rem; align-items: start; }
+    .panel { background: rgba(255, 253, 243, .96); border: 1px solid rgba(117, 145, 124, .35); border-radius: 1.4rem; box-shadow: var(--shadow); overflow: hidden; }
+    .map-panel { padding: 1rem; }
+    .map-heading { display: flex; justify-content: space-between; align-items: center; gap: .8rem; margin-bottom: .6rem; }
+    .map-heading h2 { font-size: 1.05rem; margin: 0; }
+    .tiny-btn { border: 1px solid var(--line); background: white; color: var(--green-dark); border-radius: .65rem; padding: .42rem .65rem; font-weight: 700; }
+
+    .plant-map {
+      position: relative;
+      min-height: 610px;
+      border-radius: 1rem;
+      overflow: hidden;
+      background: linear-gradient(#dff3fb 0 61%, #c7a879 61% 100%);
+      isolation: isolate;
+    }
+    .sun { position: absolute; width: 88px; height: 88px; border-radius: 50%; right: 8%; top: 5%; background: var(--gold); box-shadow: 0 0 0 13px rgba(237,182,47,.18), 0 0 34px rgba(237,182,47,.55); }
+    .cloud { position: absolute; top: 13%; left: 8%; color: rgba(255,255,255,.86); font-size: 4.7rem; line-height: 1; }
+    .stem-shape { position: absolute; left: 48%; top: 27%; width: 34px; height: 49%; transform: translateX(-50%); background: linear-gradient(90deg, #2a814a 0 45%, #3ea360 45% 100%); border-radius: 45% 45% 20% 20%; }
+    .leaf { position: absolute; width: 135px; height: 76px; background: #48a85d; border-radius: 95% 10% 95% 10%; box-shadow: inset 0 -8px 0 rgba(21,91,54,.12); }
+    .leaf::after { content: ""; position: absolute; height: 3px; width: 83%; background: rgba(21,91,54,.5); left: 8%; top: 52%; transform: rotate(-25deg); transform-origin: left; }
+    .leaf-a { left: 48%; top: 30%; transform: rotate(-12deg); }
+    .leaf-b { left: 19%; top: 41%; transform: scaleX(-1) rotate(-14deg); }
+    .leaf-c { left: 50%; top: 49%; transform: rotate(8deg) scale(.83); }
+    .soil-line { position: absolute; left: 0; right: 0; top: 61%; border-top: 5px solid rgba(112,77,41,.35); }
+    .roots-shape { position: absolute; left: 48%; top: 65%; width: 190px; height: 180px; transform: translateX(-50%); }
+    .root { position: absolute; top: 0; left: 50%; width: 9px; height: 155px; border-radius: 99px; background: #9d6d40; transform-origin: top; }
+    .root:nth-child(1) { transform: rotate(0deg); }
+    .root:nth-child(2) { transform: rotate(23deg); height: 135px; }
+    .root:nth-child(3) { transform: rotate(-27deg); height: 142px; }
+    .root:nth-child(4) { transform: rotate(48deg); height: 108px; }
+    .root:nth-child(5) { transform: rotate(-53deg); height: 112px; }
+    .molecule { position: absolute; width: 13px; height: 13px; border-radius: 50%; z-index: 3; pointer-events: none; opacity: 0; }
+    .molecule.water { background: var(--blue); box-shadow: 0 0 0 4px rgba(39,134,184,.15); }
+    .molecule.sugar { background: var(--orange); border-radius: 3px; transform: rotate(45deg); }
+    .plant-map.animate-water .water { opacity: 1; animation: rise 2.4s ease-in-out infinite; }
+    .plant-map.animate-sugar .sugar { opacity: 1; animation: flowDown 2.8s ease-in-out infinite; }
+    @keyframes rise { 0% { left: 47%; top: 78%; } 75% { left: 47%; top: 32%; } 100% { left: 61%; top: 29%; opacity: 0; } }
+    @keyframes flowDown { 0% { left: 64%; top: 37%; } 70% { left: 50%; top: 70%; } 100% { left: 36%; top: 82%; opacity: 0; } }
+    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; transition-duration: .01ms !important; } }
+
+    .hotspot { position: absolute; z-index: 5; border: 2px solid rgba(255,255,255,.9); background: var(--paper); color: var(--green-dark); box-shadow: 0 4px 12px rgba(21,91,54,.18); border-radius: 999px; padding: .48rem .72rem; font-weight: 800; font-size: .9rem; }
+    .hotspot:hover, .hotspot.active { background: var(--green-dark); color: white; transform: translateY(-2px); }
+    .hotspot[data-stop="roots"] { left: 8%; bottom: 8%; }
+    .hotspot[data-stop="stem"] { left: 8%; top: 53%; }
+    .hotspot[data-stop="leaf"] { right: 5%; top: 21%; }
+    .hotspot[data-stop="chloroplast"] { right: 4%; top: 39%; }
+    .hotspot[data-stop="photosynthesis"] { left: 5%; top: 19%; }
+    .hotspot[data-stop="transpiration"] { right: 4%; top: 55%; }
+
+    .content-panel { min-height: 675px; }
+    .content-top { padding: clamp(1.2rem, 3vw, 2rem); border-bottom: 1px solid var(--line); background: linear-gradient(120deg, var(--green-light), rgba(255,255,255,.4)); }
+    .eyebrow { margin: 0 0 .35rem; text-transform: uppercase; letter-spacing: .11em; font-weight: 800; color: var(--green); font-size: .76rem; }
+    .content-top h2 { margin: 0; font-size: clamp(1.55rem, 4vw, 2.35rem); }
+    .content-top p { margin: .6rem 0 0; color: var(--muted); line-height: 1.55; }
+    .content-body { padding: clamp(1.2rem, 3vw, 2rem); }
+    .activity { display: none; }
+    .activity.active { display: block; animation: appear .3s ease; }
+    @keyframes appear { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+    .activity h3 { margin: 0 0 .65rem; font-size: 1.18rem; }
+    .activity p { line-height: 1.55; }
+    .choice-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .75rem; margin: 1rem 0; }
+    .choice { min-height: 100px; padding: 1rem; border: 2px solid var(--line); background: white; color: var(--ink); border-radius: 1rem; text-align: left; }
+    .choice strong { display: block; color: var(--green-dark); font-size: 1.06rem; margin-bottom: .25rem; }
+    .choice:hover, .choice.selected { border-color: var(--green); background: var(--green-light); }
+    .fact-box { border-left: 5px solid var(--gold); background: #fff8d9; padding: .9rem 1rem; border-radius: .3rem .8rem .8rem .3rem; line-height: 1.5; min-height: 3.8rem; }
+    .action { border: 0; border-radius: .75rem; padding: .7rem 1rem; background: var(--green-dark); color: white; font-weight: 800; }
+    .action.secondary { background: white; color: var(--green-dark); border: 2px solid var(--green); }
+    .action-row { display: flex; flex-wrap: wrap; gap: .65rem; margin-top: 1rem; }
+    .mini-scene { min-height: 170px; background: var(--blue-light); border-radius: 1rem; padding: 1rem; position: relative; overflow: hidden; margin: 1rem 0; }
+    .transport-tubes { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; max-width: 330px; margin: 0 auto; }
+    .tube { height: 145px; border: 5px solid; border-top: 0; border-bottom: 0; position: relative; overflow: hidden; background: rgba(255,255,255,.48); }
+    .tube.xylem { border-color: var(--blue); }
+    .tube.phloem { border-color: var(--orange); }
+    .tube span { position: absolute; left: 50%; transform: translateX(-50%); font-weight: 800; }
+    .tube.xylem span { animation: tubeUp 2s infinite; color: var(--blue); }
+    .tube.phloem span { animation: tubeDown 2.2s infinite; color: var(--orange); }
+    @keyframes tubeUp { from { bottom: -25px; } to { bottom: 150px; } }
+    @keyframes tubeDown { from { top: -25px; } to { top: 150px; } }
+
+    .light-buttons { display: grid; grid-template-columns: repeat(3, 1fr); gap: .6rem; margin: 1rem 0; }
+    .light-btn { padding: .8rem .4rem; border-radius: .8rem; border: 3px solid transparent; font-weight: 800; background: white; }
+    .light-btn[data-light="red"] { color: #9d2d2d; border-color: #d45a5a; }
+    .light-btn[data-light="blue"] { color: #215d9a; border-color: #5a91d4; }
+    .light-btn[data-light="green"] { color: #266d43; border-color: #5eae77; }
+    .light-meter { height: 1rem; border-radius: 999px; background: #e5e8e5; overflow: hidden; }
+    .light-meter-fill { height: 100%; width: 10%; background: var(--green); transition: width .45s ease; }
+    .equation { padding: 1rem; background: var(--green-light); border-radius: 1rem; text-align: center; font-weight: 800; line-height: 1.65; margin: 1rem 0; }
+    .ingredient-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: .6rem; }
+    .ingredient { border: 2px solid var(--line); background: white; border-radius: .8rem; padding: .75rem .25rem; font-weight: 800; }
+    .ingredient.selected { background: var(--green-light); border-color: var(--green); }
+
+    .slider-group { display: grid; gap: .8rem; margin: 1rem 0; }
+    .slider-row label { display: flex; justify-content: space-between; gap: .8rem; font-weight: 800; margin-bottom: .25rem; }
+    input[type="range"] { width: 100%; accent-color: var(--green); }
+    .transpiration-result { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: .8rem; padding: .8rem; background: var(--blue-light); border-radius: 1rem; }
+    .drop-cloud { font-size: 2.2rem; }
+    .meter { height: .85rem; background: white; border-radius: 99px; overflow: hidden; margin-top: .3rem; }
+    .meter > div { height: 100%; width: 50%; background: var(--blue); transition: width .3s; }
+
+    .questions { margin-top: 1.3rem; padding-top: 1rem; border-top: 1px solid var(--line); }
+    .questions h3 { margin-bottom: .7rem; }
+    .question-list { display: flex; flex-wrap: wrap; gap: .5rem; }
+    .question-btn { border: 1px solid var(--line); background: white; color: var(--green-dark); padding: .55rem .7rem; border-radius: 999px; font-weight: 700; }
+    .question-btn:hover { background: var(--green-light); border-color: var(--green); }
+    .answer { margin-top: .75rem; min-height: 3rem; padding: .8rem; background: var(--cream); border-radius: .8rem; line-height: 1.5; }
+
+    .quiz { margin-top: 1.2rem; padding: 1rem; background: white; border: 2px dashed var(--green); border-radius: 1rem; }
+    .quiz-options { display: grid; gap: .5rem; margin-top: .7rem; }
+    .quiz-option { text-align: left; border: 1px solid var(--line); background: var(--paper); padding: .65rem .75rem; border-radius: .65rem; }
+    .quiz-option.correct { background: var(--green-light); border-color: var(--green); }
+    .quiz-option.incorrect { background: #fde4dc; border-color: var(--orange); }
+    .quiz-result { min-height: 1.6rem; margin: .6rem 0 0; font-weight: 800; }
+    footer { text-align: center; padding: 1rem; color: var(--muted); font-size: .85rem; }
+
+    @media (max-width: 820px) {
+      header { align-items: flex-start; }
+      .app-shell { grid-template-columns: 1fr; }
+      .plant-map { min-height: 520px; }
+      .content-panel { min-height: 0; }
+    }
+    @media (max-width: 520px) {
+      header { flex-direction: column; }
+      .progress-box { width: 100%; }
+      .choice-row { grid-template-columns: 1fr; }
+      .plant-map { min-height: 470px; }
+      .leaf { width: 105px; height: 62px; }
+      .hotspot { font-size: .77rem; padding: .4rem .55rem; }
+      .ingredient-row { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <a class="skip-link" href="#learning-panel">Skip to learning activity</a>
+  <header>
+    <div class="brand">
+      <div class="brand-mark" aria-hidden="true">🌱</div>
+      <div>
+        <h1>Plant Explorer</h1>
+        <p class="subtitle">A journey through photosynthesis</p>
+      </div>
+    </div>
+    <div class="progress-box" aria-label="Exploration progress">
+      <div class="progress-label"><span>Journey progress</span><strong id="progressText">0 of 6</strong></div>
+      <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    </div>
+  </header>
+
+  <main>
+    <div class="app-shell">
+      <section class="panel map-panel" aria-labelledby="map-title">
+        <div class="map-heading">
+          <h2 id="map-title">Choose where to explore</h2>
+          <button class="tiny-btn" id="resetBtn" type="button">Start over</button>
+        </div>
+        <div class="plant-map" id="plantMap" aria-label="Interactive diagram of a plant">
+          <div class="sun" aria-hidden="true"></div>
+          <div class="cloud" aria-hidden="true">☁</div>
+          <div class="stem-shape" aria-hidden="true"></div>
+          <div class="leaf leaf-a" aria-hidden="true"></div>
+          <div class="leaf leaf-b" aria-hidden="true"></div>
+          <div class="leaf leaf-c" aria-hidden="true"></div>
+          <div class="soil-line" aria-hidden="true"></div>
+          <div class="roots-shape" aria-hidden="true"><i class="root"></i><i class="root"></i><i class="root"></i><i class="root"></i><i class="root"></i></div>
+          <div class="molecule water" aria-hidden="true"></div>
+          <div class="molecule sugar" aria-hidden="true"></div>
+          <button class="hotspot" data-stop="photosynthesis" type="button">☀ Photosynthesis</button>
+          <button class="hotspot" data-stop="leaf" type="button">🍃 Leaf &amp; stomata</button>
+          <button class="hotspot" data-stop="chloroplast" type="button">🔬 Chloroplast</button>
+          <button class="hotspot" data-stop="transpiration" type="button">💨 Transpiration</button>
+          <button class="hotspot" data-stop="stem" type="button">↕ Stem transport</button>
+          <button class="hotspot" data-stop="roots" type="button">💧 Roots</button>
+        </div>
+      </section>
+
+      <section class="panel content-panel" id="learning-panel" aria-live="polite">
+        <div class="content-top">
+          <p class="eyebrow" id="stopNumber">Welcome, explorer</p>
+          <h2 id="stopTitle">Follow a drop of water</h2>
+          <p id="stopIntro">Select a labeled part of the plant to discover how water, gases, light, and sugar move through a plant.</p>
+        </div>
+        <div class="content-body">
+          <article class="activity active" data-activity="welcome">
+            <h3>Your mission</h3>
+            <p>Visit all six stops. Try each activity, ask questions, and discover how a plant makes food from light.</p>
+            <div class="fact-box"><strong>Start at the roots:</strong> Water's journey begins underground.</div>
+            <div class="action-row"><button class="action go-btn" data-go="roots" type="button">Begin at the roots →</button></div>
+          </article>
+
+          <article class="activity" data-activity="roots">
+            <h3>What enters the roots?</h3>
+            <p>Root hairs absorb <strong>water</strong> and <strong>dissolved minerals</strong> from the soil. These materials will enter the xylem.</p>
+            <div class="choice-row">
+              <button class="choice root-choice" data-correct="true" type="button"><strong>Water + minerals</strong>Absorbed from spaces between soil particles.</button>
+              <button class="choice root-choice" data-correct="false" type="button"><strong>Sugar</strong>Sugar is made mainly in the leaves, not absorbed from soil.</button>
+            </div>
+            <div class="fact-box" id="rootFeedback">Choose what the roots absorb.</div>
+            <div class="questions" data-question-set="roots"></div>
+          </article>
+
+          <article class="activity" data-activity="stem">
+            <h3>Two transport pathways</h3>
+            <p>The plant's vascular tissue contains different tubes. Choose a pathway to see what it carries.</p>
+            <div class="mini-scene">
+              <div class="transport-tubes" aria-label="Animated xylem and phloem tubes">
+                <div class="tube xylem"><span>● water</span></div>
+                <div class="tube phloem"><span>◆ sugar</span></div>
+              </div>
+            </div>
+            <div class="choice-row">
+              <button class="choice transport-choice" data-path="xylem" type="button"><strong>Ride the xylem ↑</strong>Water and dissolved minerals move mostly upward from the roots.</button>
+              <button class="choice transport-choice" data-path="phloem" type="button"><strong>Ride the phloem ↕</strong>Sugars move from sources, such as leaves, to places that use or store food.</button>
+            </div>
+            <div class="fact-box" id="transportFeedback">Xylem and phloem have different transport jobs.</div>
+            <div class="questions" data-question-set="stem"></div>
+          </article>
+
+          <article class="activity" data-activity="leaf">
+            <h3>Meet the stomata</h3>
+            <p>Stomata are tiny pores, usually most numerous on the lower surface of a leaf. Guard cells control whether each pore is open or closed.</p>
+            <div class="choice-row">
+              <button class="choice stomata-choice" data-state="open" type="button"><strong>Open stomata</strong>Carbon dioxide can enter; oxygen and water vapor can leave.</button>
+              <button class="choice stomata-choice" data-state="closed" type="button"><strong>Close stomata</strong>The plant reduces water loss, but less carbon dioxide can enter.</button>
+            </div>
+            <div class="fact-box" id="stomataFeedback">Choose a stomata state.</div>
+            <div class="questions" data-question-set="leaf"></div>
+          </article>
+
+          <article class="activity" data-activity="chloroplast">
+            <h3>How chlorophyll handles light</h3>
+            <p>Inside chloroplasts, <strong>chlorophyll</strong> is a green pigment in the thylakoid membranes. Test different colors of visible light.</p>
+            <div class="light-buttons">
+              <button class="light-btn" data-light="red" data-absorb="90" type="button">Red light</button>
+              <button class="light-btn" data-light="blue" data-absorb="95" type="button">Blue light</button>
+              <button class="light-btn" data-light="green" data-absorb="25" type="button">Green light</button>
+            </div>
+            <p><strong>Light absorbed by chlorophyll:</strong> <span id="lightValue">Choose a color</span></p>
+            <div class="light-meter" aria-hidden="true"><div class="light-meter-fill" id="lightMeter"></div></div>
+            <div class="fact-box" id="lightFeedback">Chlorophyll absorbs red and blue light strongly. It reflects more green light, helping leaves look green.</div>
+            <div class="questions" data-question-set="chloroplast"></div>
+          </article>
+
+          <article class="activity" data-activity="photosynthesis">
+            <h3>Build photosynthesis</h3>
+            <p>Select all three things the plant needs for photosynthesis.</p>
+            <div class="ingredient-row">
+              <button class="ingredient" data-ingredient="carbon dioxide" type="button">CO₂<br>carbon dioxide</button>
+              <button class="ingredient" data-ingredient="water" type="button">H₂O<br>water</button>
+              <button class="ingredient" data-ingredient="light energy" type="button">☀<br>light energy</button>
+            </div>
+            <div class="action-row"><button class="action" id="makeFoodBtn" type="button">Make plant food</button></div>
+            <div class="equation" aria-label="Photosynthesis word equation">carbon dioxide + water + light energy → glucose + oxygen</div>
+            <div class="fact-box" id="photoFeedback">Chlorophyll captures the light energy. It is not used up as an ingredient.</div>
+            <div class="questions" data-question-set="photosynthesis"></div>
+          </article>
+
+          <article class="activity" data-activity="transpiration">
+            <h3>Change the rate of transpiration</h3>
+            <p>Transpiration is the release of water vapor from a plant into the atmosphere, mostly through leaf stomata.</p>
+            <div class="slider-group">
+              <div class="slider-row"><label for="lightSlider"><span>Sunlight</span><span id="lightSliderValue">Medium</span></label><input id="lightSlider" type="range" min="0" max="100" value="50"></div>
+              <div class="slider-row"><label for="tempSlider"><span>Temperature</span><span id="tempSliderValue">Medium</span></label><input id="tempSlider" type="range" min="0" max="100" value="50"></div>
+              <div class="slider-row"><label for="windSlider"><span>Wind</span><span id="windSliderValue">Low</span></label><input id="windSlider" type="range" min="0" max="100" value="20"></div>
+              <div class="slider-row"><label for="humiditySlider"><span>Humidity</span><span id="humiditySliderValue">Medium</span></label><input id="humiditySlider" type="range" min="0" max="100" value="50"></div>
+            </div>
+            <div class="transpiration-result"><div class="drop-cloud" aria-hidden="true">💧→☁</div><div><strong id="transpirationLabel">Medium transpiration</strong><div class="meter"><div id="transpirationMeter"></div></div></div></div>
+            <div class="fact-box" id="transpirationFeedback">As water evaporates from leaves, it helps pull a continuous column of water upward through the xylem.</div>
+            <div class="questions" data-question-set="transpiration"></div>
+          </article>
+
+          <section class="quiz" aria-labelledby="quizTitle">
+            <h3 id="quizTitle">Quick challenge</h3>
+            <p id="quizQuestion">Which tissue carries water upward from the roots?</p>
+            <div class="quiz-options" id="quizOptions"></div>
+            <p class="quiz-result" id="quizResult" aria-live="polite"></p>
+          </section>
+        </div>
+      </section>
+    </div>
+  </main>
+  <footer>Plant Explorer · Learn by following matter and energy through a plant</footer>
+
+  <script>
+    const stopInfo = {
+      roots: { number: 'Stop 1 of 6', title: 'Roots: collect water and minerals', intro: 'Begin underground, where root hairs absorb water and dissolved minerals from the soil.' },
+      stem: { number: 'Stop 2 of 6', title: 'Stem: xylem and phloem', intro: 'Explore the plant’s transport system and compare the jobs of two vascular tissues.' },
+      leaf: { number: 'Stop 3 of 6', title: 'Leaf: gases enter and leave', intro: 'Investigate how stomata balance carbon dioxide intake with water loss.' },
+      chloroplast: { number: 'Stop 4 of 6', title: 'Chloroplast: capture light', intro: 'Meet chlorophyll, the pigment that captures light energy for photosynthesis.' },
+      photosynthesis: { number: 'Stop 5 of 6', title: 'Photosynthesis: make glucose', intro: 'Combine matter and light energy to create food for the plant.' },
+      transpiration: { number: 'Stop 6 of 6', title: 'Transpiration: water enters the air', intro: 'Change environmental conditions and observe how quickly a plant releases water vapor.' }
+    };
+
+    const questionBank = {
+      roots: [
+        ['Do roots absorb food from soil?', 'No. Roots absorb water and dissolved minerals. Plants make glucose during photosynthesis, mainly in their leaves.'],
+        ['What are root hairs?', 'Root hairs are tiny extensions of root cells. They increase the surface area available for absorbing water and minerals.']
+      ],
+      stem: [
+        ['What does xylem carry?', 'Xylem carries water and dissolved minerals, mostly upward from roots to stems and leaves.'],
+        ['What does phloem carry?', 'Phloem transports sugars and other organic substances from sources, such as leaves, to growing or storage tissues.'],
+        ['Does phloem only move downward?', 'No. Phloem can move material up or down, depending on where sugar is made and where it is needed.']
+      ],
+      leaf: [
+        ['What enters through stomata?', 'Carbon dioxide enters through stomata. Oxygen and water vapor can leave through them.'],
+        ['Why do stomata close?', 'Guard cells can close stomata to reduce water loss, especially when water is scarce.']
+      ],
+      chloroplast: [
+        ['What is chlorophyll?', 'Chlorophyll is a green pigment in chloroplast thylakoid membranes. It absorbs light energy used in photosynthesis.'],
+        ['Why are leaves green?', 'Chlorophyll absorbs red and blue light more strongly and reflects or transmits more green light.'],
+        ['Is chlorophyll used up?', 'No. Chlorophyll captures light energy, but it is not consumed as a reactant in the photosynthesis equation.']
+      ],
+      photosynthesis: [
+        ['Where does the carbon come from?', 'The carbon atoms in glucose come from carbon dioxide in the air.'],
+        ['What happens to the glucose?', 'The plant can use glucose for energy, build cellulose, or convert it into substances such as starch for storage.'],
+        ['Where does the oxygen come from?', 'The oxygen released during photosynthesis comes from water molecules split during the light-dependent reactions.']
+      ],
+      transpiration: [
+        ['What is transpiration?', 'Transpiration is the release of water vapor from a plant into the atmosphere, mostly through stomata.'],
+        ['How does transpiration help xylem flow?', 'Water evaporating from leaves creates tension that helps pull a continuous column of water upward through xylem.'],
+        ['What slows transpiration?', 'High humidity and closed stomata usually slow transpiration. Cooler, still conditions can also reduce it.']
+      ]
+    };
+
+    const quizQuestions = [
+      { q: 'Which tissue carries water upward from the roots?', options: ['Phloem', 'Xylem', 'Chlorophyll'], answer: 1, explain: 'Xylem carries water and dissolved minerals.' },
+      { q: 'What does phloem transport?', options: ['Sugars', 'Sunlight', 'Soil'], answer: 0, explain: 'Phloem transports sugars to tissues that use or store food.' },
+      { q: 'What is chlorophyll’s main role?', options: ['Absorb minerals', 'Capture light energy', 'Release roots'], answer: 1, explain: 'Chlorophyll captures light energy for photosynthesis.' },
+      { q: 'Most water vapor leaves a plant through what structures?', options: ['Flowers', 'Root hairs', 'Stomata'], answer: 2, explain: 'Most transpiration occurs through stomata in leaves.' },
+      { q: 'Which three things are needed for photosynthesis?', options: ['CO₂, water, and light', 'Sugar, oxygen, and soil', 'Water, sugar, and wind'], answer: 0, explain: 'Photosynthesis uses carbon dioxide and water, powered by light energy.' }
+    ];
+
+    const visited = new Set();
+    let quizIndex = 0;
+    const plantMap = document.getElementById('plantMap');
+
+    function showStop(stop) {
+      const info = stopInfo[stop];
+      if (!info) return;
+      document.getElementById('stopNumber').textContent = info.number;
+      document.getElementById('stopTitle').textContent = info.title;
+      document.getElementById('stopIntro').textContent = info.intro;
+      document.querySelectorAll('.activity').forEach(el => el.classList.toggle('active', el.dataset.activity === stop));
+      document.querySelectorAll('.hotspot').forEach(el => el.classList.toggle('active', el.dataset.stop === stop));
+      plantMap.classList.toggle('animate-water', stop === 'roots' || stop === 'stem' || stop === 'transpiration');
+      plantMap.classList.toggle('animate-sugar', stop === 'stem' || stop === 'photosynthesis');
+      visited.add(stop);
+      updateProgress();
+      if (window.innerWidth < 821) document.getElementById('learning-panel').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    function updateProgress() {
+      const amount = visited.size;
+      document.getElementById('progressText').textContent = amount + ' of 6';
+      document.getElementById('progressFill').style.width = (amount / 6 * 100) + '%';
+    }
+
+    document.querySelectorAll('[data-stop]').forEach(btn => btn.addEventListener('click', () => showStop(btn.dataset.stop)));
+    document.querySelectorAll('.go-btn').forEach(btn => btn.addEventListener('click', () => showStop(btn.dataset.go)));
+
+    document.querySelectorAll('.questions').forEach(box => {
+      const set = box.dataset.questionSet;
+      box.innerHTML = '<h3>Ask a question</h3><div class="question-list"></div><div class="answer">Choose a question to reveal the answer.</div>';
+      const list = box.querySelector('.question-list');
+      questionBank[set].forEach(([question, answer]) => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'question-btn';
+        btn.textContent = question;
+        btn.addEventListener('click', () => { box.querySelector('.answer').textContent = answer; });
+        list.appendChild(btn);
+      });
+    });
+
+    document.querySelectorAll('.root-choice').forEach(btn => btn.addEventListener('click', () => {
+      document.querySelectorAll('.root-choice').forEach(x => x.classList.remove('selected'));
+      btn.classList.add('selected');
+      document.getElementById('rootFeedback').textContent = btn.dataset.correct === 'true' ? 'Correct! Root hairs absorb water and dissolved minerals.' : 'Not quite. The plant makes sugar in its leaves; roots absorb water and dissolved minerals.';
+    }));
+
+    document.querySelectorAll('.transport-choice').forEach(btn => btn.addEventListener('click', () => {
+      document.querySelectorAll('.transport-choice').forEach(x => x.classList.remove('selected'));
+      btn.classList.add('selected');
+      const xylem = btn.dataset.path === 'xylem';
+      document.getElementById('transportFeedback').textContent = xylem ? 'You are riding upward with water and dissolved minerals. Transpiration helps pull this water column toward the leaves.' : 'You are traveling with sugar made in a leaf. Phloem delivers it to growing and storage tissues, which may be above or below the leaf.';
+      plantMap.classList.toggle('animate-water', xylem);
+      plantMap.classList.toggle('animate-sugar', !xylem);
+    }));
+
+    document.querySelectorAll('.stomata-choice').forEach(btn => btn.addEventListener('click', () => {
+      document.querySelectorAll('.stomata-choice').forEach(x => x.classList.remove('selected'));
+      btn.classList.add('selected');
+      document.getElementById('stomataFeedback').textContent = btn.dataset.state === 'open' ? 'Open: CO₂ enters for photosynthesis. O₂ and water vapor can leave.' : 'Closed: The plant saves water, but carbon dioxide entry and photosynthesis may slow.';
+    }));
+
+    document.querySelectorAll('.light-btn').forEach(btn => btn.addEventListener('click', () => {
+      const value = Number(btn.dataset.absorb);
+      document.getElementById('lightValue').textContent = value >= 80 ? 'strong absorption' : 'weak absorption';
+      document.getElementById('lightMeter').style.width = value + '%';
+      document.getElementById('lightFeedback').textContent = btn.dataset.light === 'green' ? 'Much of the green light is reflected or transmitted, which helps leaves look green.' : 'Chlorophyll absorbs this color strongly, capturing energy that can drive the light-dependent reactions.';
+    }));
+
+    const ingredients = new Set();
+    document.querySelectorAll('.ingredient').forEach(btn => btn.addEventListener('click', () => {
+      const item = btn.dataset.ingredient;
+      if (ingredients.has(item)) ingredients.delete(item); else ingredients.add(item);
+      btn.classList.toggle('selected', ingredients.has(item));
+    }));
+    document.getElementById('makeFoodBtn').addEventListener('click', () => {
+      document.getElementById('photoFeedback').textContent = ingredients.size === 3 ? 'Success! Light energy powers reactions that use carbon dioxide and water to make glucose. Oxygen is released.' : 'Select carbon dioxide, water, and light energy first. The plant needs all three.';
+    });
+
+    const sliders = ['light', 'temp', 'wind', 'humidity'];
+    function wordValue(value) { return value < 34 ? 'Low' : value < 67 ? 'Medium' : 'High'; }
+    function updateTranspiration() {
+      const light = +document.getElementById('lightSlider').value;
+      const temp = +document.getElementById('tempSlider').value;
+      const wind = +document.getElementById('windSlider').value;
+      const humidity = +document.getElementById('humiditySlider').value;
+      sliders.forEach(name => {
+        const slider = document.getElementById(name + 'Slider');
+        document.getElementById(name + 'SliderValue').textContent = wordValue(+slider.value);
+      });
+      const rate = Math.max(5, Math.min(100, 15 + light * .2 + temp * .25 + wind * .25 - humidity * .3));
+      document.getElementById('transpirationMeter').style.width = rate + '%';
+      const label = rate < 34 ? 'Low' : rate < 67 ? 'Medium' : 'High';
+      document.getElementById('transpirationLabel').textContent = label + ' transpiration';
+      document.getElementById('transpirationFeedback').textContent = humidity > 70 ? 'Humid air already contains lots of water vapor, so evaporation from the leaf slows.' : rate > 66 ? 'Warm, bright, or windy conditions can increase water loss. The roots and xylem must replace that water.' : 'As water evaporates from leaves, it helps pull a continuous column of water upward through the xylem.';
+    }
+    sliders.forEach(name => document.getElementById(name + 'Slider').addEventListener('input', updateTranspiration));
+    updateTranspiration();
+
+    function renderQuiz() {
+      const item = quizQuestions[quizIndex];
+      document.getElementById('quizQuestion').textContent = item.q;
+      document.getElementById('quizResult').textContent = '';
+      const options = document.getElementById('quizOptions');
+      options.innerHTML = '';
+      item.options.forEach((text, index) => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'quiz-option';
+        btn.textContent = text;
+        btn.addEventListener('click', () => {
+          options.querySelectorAll('button').forEach(x => x.disabled = true);
+          btn.classList.add(index === item.answer ? 'correct' : 'incorrect');
+          if (index !== item.answer) options.children[item.answer].classList.add('correct');
+          document.getElementById('quizResult').textContent = (index === item.answer ? 'Correct! ' : 'Good try. ') + item.explain;
+          setTimeout(() => { quizIndex = (quizIndex + 1) % quizQuestions.length; renderQuiz(); }, 2200);
+        });
+        options.appendChild(btn);
+      });
+    }
+    renderQuiz();
+
+    document.getElementById('resetBtn').addEventListener('click', () => {
+      visited.clear();
+      updateProgress();
+      plantMap.classList.remove('animate-water', 'animate-sugar');
+      document.querySelectorAll('.hotspot').forEach(x => x.classList.remove('active'));
+      document.querySelectorAll('.activity').forEach(x => x.classList.toggle('active', x.dataset.activity === 'welcome'));
+      document.getElementById('stopNumber').textContent = 'Welcome, explorer';
+      document.getElementById('stopTitle').textContent = 'Follow a drop of water';
+      document.getElementById('stopIntro').textContent = 'Select a labeled part of the plant to discover how water, gases, light, and sugar move through a plant.';
+    });
+  </script>
+</body>
+</html>
